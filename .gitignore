@@ -1,3 +1,8 @@
+obj/
+linux-4.0.4/
+busybox-1.23.2/
+
+
 # Object files
 *.o
 *.ko

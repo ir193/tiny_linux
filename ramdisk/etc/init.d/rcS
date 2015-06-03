@@ -1,0 +1,8 @@
+#!/bin/sh
+
+mount /proc
+mount -o remount,rw /
+mount -a
+
+clear                               
+echo "Booting Tiny Linux"
