@@ -3,11 +3,21 @@ This is my note of doing the project for advanced operating systems. I'll try to
 
 We’ll be building:
 
- 1. A tiny custom Linux kernel. And try to make its size as small as possible by disable some kernel feature/function, and also by patch the kernel source code.
+ 1. A tiny custom [Linux kernel][1]. And try to make its size as small as possible by disable some kernel feature/function, and also by patch the kernel source code.
 
  2. A ramdisk served as main filesystem, with some configure to setup network working.
 
 The host and target will both be x86.
+
+Some useful tutorial:
+
+* http://mgalgs.github.io/2015/05/16/how-to-build-a-custom-linux-kernel-for-qemu-2015-edition.html
+
+* http://www.linuxfromscratch.org/
+
+Some useful example:
+
+* http://distro.ibiblio.org/tinycorelinux/
 
 
 #Preparation#
@@ -26,11 +36,11 @@ First, setup a working directory and some environment variable for convenience
     TOP=$HOME/tiny_linux
     cd $TOP
 
-Download source code of linux kernel:
+Download source code of [linux kernel][1]:
 
     curl https://www.kernel.org/pub/linux/kernel/v4.x/linux-4.0.4.tar.xz | tar xJf -
 
-Downlaod source code of busybox
+Downlaod source code of [busybox][2]
 
     curl http://busybox.net/downloads/busybox-1.23.2.tar.bz2 | tar xjf -
 
@@ -79,7 +89,7 @@ Before that, just copy the kernel image into obj directory.
 
 #Build Root Filesystem#
 
-Now we focus on the userland level, we will use busybox[]. BusyBox combines tiny versions of many common UNIX utilities into a single small executable. It provides replacements for most of the utilities you usually find in GNU fileutils, shellutils, etc.
+Now we focus on the userland level, we will use [Busybox][2]. BusyBox combines tiny versions of many common UNIX utilities into a single small executable. It provides replacements for most of the utilities you usually find in GNU fileutils, shellutils, etc.
 
 First we build busybox:
     
@@ -119,7 +129,7 @@ Now create another directory to hold our filesystem hierarchy, and copy busybox 
 
 Then create a simple init script for debug. 
 
-Recall what we learn on class, init process is the first userspace process. It takes care of services, runlevels and so on. All processes will fork from init. In real linux distribution, some typical init process are: systemd, Upstart, SysV
+Recall what we learn on class, [init][3] process is the first userspace process. It takes care of services, runlevels and so on. All processes will fork from init. In real linux distribution, some typical init process are: systemd, Upstart, SysV
 
     echo -e '#!/bin/sh \n /bin/sh' > init
     chmod +x init
@@ -132,10 +142,9 @@ But when finish debug, we will use symbolic link busybox as init, then this opti
 
 check again the symbolic link is correct. Then we can pack the filesystem into a cpio file. 
 
-    cd $TOP/obj/ramdisk
+    cd $TOP/ramdisk
     find . -print0 | cpio --null -ov --format=newc | gzip -9 > $TOP/obj/initramfs.cpio.gz
     RAMDISK=$TOP/obj/initramfs.cpio.gz
-
 
 RUN IT~:
 
@@ -154,7 +163,7 @@ Don't worry, that's normal because our init simply launch a shell without necess
 
 We step back and remove the debug script. And create a symbolic link with busybox to subtitude it:
 
-    cd $TOP/obj/ramdisk
+    cd $TOP/ramdisk
     rm init
     ln -s bin/busybox init
 
@@ -162,14 +171,14 @@ So after kernel booting into userland, busybox will be called as init. Then busy
 
 Before we write init configurations, we create some directory:
 
-    cd $TOP/obj/ramdisk
+    cd $TOP/ramdisk
     mkdir -pv {bin,sbin,etc,proc,sys,usr/{bin,sbin},dev}
 
 That's more like a real linux system.
 
 Then busybox configuration:
     
-    cd $TOP/obj/ramdisk
+    cd $TOP/ramdisk
     cd etc
     vim inittab
 
@@ -198,7 +207,7 @@ rcS will called after system init, we mount filesystem and initialize network he
 
     #!/bin/sh
 
-    mount /proc
+    mount proc
     mount -o remount,rw /
     mount -a
 
@@ -223,7 +232,7 @@ The content:
 
 OK for now, that's finish, pack it and run:
 
-    cd $TOP/obj/ramdisk
+    cd $TOP/ramdisk
     find . -print0 | cpio --null -ov --format=newc | gzip -9 > $TOP/obj/initramfs.cpio.gz
     qemu-system-i386 -kernel $KERNEL -initrd $RAMDISK
 
@@ -247,9 +256,99 @@ Finally, check ethernet card driver working:
 We should see `eth0` if ethernet card driver success.
 
 
+#Network#
+
+Keep editing /etc/init.d/rcS, add 
+
+    /sbin/ifconfig lo 127.0.0.1 up
+    /sbin/route add 127.0.0.1 lo &
 
 
+    ifconfig eth0 up
+    ip addr add 10.0.2.15/24 dev eth0
+    ip route add default via 10.0.2.2
+
+That's all.
+
+You can test it in your tiny system:
+
+    wget http://[you HOST os ip]:port/file
 
 
+#Reducing the kernel size#
 
-http://en.wikipedia.org/wiki/Init
+run 
+
+    cd $TOP/linux-4.0.4
+    make O=../obj/linux_defconfig menuconfig
+
+turn off unneccessary features! Especially devices drivers
+
+To be continued
+see http://elinux.org/Work_on_Tiny_Linux_Kernel
+
+
+#FAQ#
+
+1. I can't use `make menuconfig`
+
+Maybe you need install ncurse
+
+2. How can I see full log?
+
+    qemu-system-i386 -kernel $TOP/obj/linux_defconfig/arch/x86/boot/bzImage -append "console=ttyS0" -nographic
+
+or inside you GUEST OS
+
+    dmesg | less
+
+3. When I run qemu `error reading initrd: No such file or directory`
+
+Maybe you continue your work in anther shell? Check environment variable $TOP $KERNEL $RAMDISK is correct
+
+4. VFS: Cannot open root device "(null)"
+
+check -initrd parameter and kernel compiled with initramfs support.
+
+5. Kernel panic at boot: not syncing. No init found.
+
+check busybox must be *staticaly* compiled
+
+6. Generate ramdisk is slow and very large
+
+Execute command right under ramdisk root.
+
+7. ifconfig report /proc/net/dev: No such file or directory
+
+/proc is not properly mount. check fstab and rcS.
+
+8. I can't see eth0
+
+check ethernet device driver support. By default, QEMU emulate a Intel E1000 card. Note <M> means loadable kernel module and need mannually load.
+
+9. I can't ping
+
+It's normal. Because QEMU default ethernet driver doesn't support ICMP.
+
+10. A lot of error message
+
+It's normal as long as network can work.
+
+11. I can't get DHCP working
+
+NEITHER CAN I!
+
+12. But I can get DHCP working?
+
+DO tell me!
+
+
+#Reference#
+
+[1]: https://www.kernel.org/
+[2]: http://busybox.net/
+[3]: http://en.wikipedia.org/wiki/Init
+
+[4]: http://elinux.org/Work_on_Tiny_Linux_Kernel
+[5]: http://mgalgs.github.io/2015/05/16/how-to-build-a-custom-linux-kernel-for-qemu-2015-edition.html
+[6]: http://distro.ibiblio.org/tinycorelinux/

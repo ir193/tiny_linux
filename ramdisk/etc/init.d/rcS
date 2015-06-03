@@ -1,8 +1,18 @@
 #!/bin/sh
 
-mount /proc
+mount proc
 mount -o remount,rw /
 mount -a
 
 clear                               
 echo "Booting Tiny Linux"
+
+
+/sbin/ifconfig lo 127.0.0.1 up
+/sbin/route add 127.0.0.1 lo &
+
+
+ifconfig eth0 up
+ip addr add 10.0.2.15/24 dev eth0
+ip route add default via 10.0.2.2
+
