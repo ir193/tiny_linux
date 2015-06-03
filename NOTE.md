@@ -344,6 +344,17 @@ DO tell me!
 
 
 #Reference#
+https://www.kernel.org/
+
+http://busybox.net/
+
+http://en.wikipedia.org/wiki/Inithttp://elinux.org/Work_on_Tiny_Linux_Kernel
+
+http://mgalgs.github.io/2015/05/16/how-to-build-a-custom-linux-kernel-for-qemu-2015-edition.html
+
+http://distro.ibiblio.org/tinycorelinux/
+
+
 
 [1]: https://www.kernel.org/
 [2]: http://busybox.net/
