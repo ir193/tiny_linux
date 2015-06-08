@@ -270,6 +270,24 @@ Keep editing /etc/init.d/rcS, add
 
 That's all.
 
+Check our /etc/init.d/rcS again, it should contains:
+
+    #!/bin/sh
+
+    mount proc
+    mount -o remount,rw /
+    mount -a
+
+    clear                               
+    echo "Booting Tiny Linux"
+
+    /sbin/ifconfig lo 127.0.0.1 up
+    /sbin/route add 127.0.0.1 lo &
+
+    ifconfig eth0 up
+    ip addr add 10.0.2.15/24 dev eth0
+    ip route add default via 10.0.2.2
+
 You can test it in your tiny system:
 
     wget http://[you HOST os ip]:port/file
@@ -286,6 +304,56 @@ turn off unneccessary features! Especially devices drivers
 
 To be continued
 see http://elinux.org/Work_on_Tiny_Linux_Kernel
+
+
+#A very tiny version#
+
+start over from zero config 
+
+    cd $TOP/linux-4.0.4
+    make O=../obj/linux_defconfig allnoconfig
+
+This will select no to all config. Then we should turn necessary option on.
+
+For now, at least following options:
+
+
+Support for basic start up and debug log:
+
+>
+>  General setup  --->
+>    Initial RAM filesystem and RAM disk (initramfs/initrd) support
+>    Support initial ramdisks compressed using gzip
+>    Optimize for size
+>    Embedded system 
+>    Configure standard kernel features (expert users) -->
+>      Enable support for printk
+
+>  Executable file formats / Emulations  --->
+>    Kernel support for ELF binaries
+>    Kernel support for scripts starting with #!
+
+
+Support Ethernet card:
+
+>  Bus options (PCI etc.)  --->
+>    PCI support 
+>    
+
+>
+
+>  Networking support -->
+>    Networking options -->
+>       TCP/IP networking
+>       INET: socket monitoring interface
+
+>  Device Drivers -->
+>    Network device -->
+>       Network core driver support
+>    Ethernet driver support -->
+>       Intel(R) PRO/1000 PCI-Express Gigabit Ethernet support
+
+Some option depends on other options in order to be visible. Press / to see dependcy.
 
 
 #FAQ#
